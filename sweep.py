@@ -106,6 +106,20 @@ def run_single(
     return result
 
 
+def _load_existing_results(results_path: str) -> list[dict]:
+    """Load existing results from a previous run, if any."""
+    if not os.path.isfile(results_path):
+        return []
+    try:
+        with open(results_path) as f:
+            data = json.load(f)
+        results = data.get("results", [])
+        # Only keep successful results (no errors)
+        return [r for r in results if "error" not in r]
+    except (json.JSONDecodeError, KeyError):
+        return []
+
+
 def run_sweep(config: dict, results_path: str) -> list[dict]:
     """Run the full sweep and save results incrementally."""
     targets = config["targets"]
@@ -113,11 +127,18 @@ def run_sweep(config: dict, results_path: str) -> list[dict]:
     settings = config.get("settings", {})
 
     total_runs = len(targets) * (1 + len(drafts))
+
+    # Load existing results for resume support
+    results = _load_existing_results(results_path)
+    completed = {(r["target"], r.get("draft")) for r in results}
+    skipped = len(completed)
+
     print(f"\n{'='*60}")
     print(f"  Sweep: {len(targets)} targets x {len(drafts)} drafts = {total_runs} runs")
+    if skipped:
+        print(f"  Resuming: {skipped} already completed, {total_runs - skipped} remaining")
     print(f"{'='*60}\n")
 
-    results = []
     run_idx = 0
 
     for target in targets:
@@ -126,22 +147,25 @@ def run_sweep(config: dict, results_path: str) -> list[dict]:
 
         # --- baseline (no draft) ---
         run_idx += 1
-        print(f"[{run_idx}/{total_runs}] {target_label} (baseline)")
-        try:
-            result = run_single(target_path, None, f"{target_label} baseline", settings)
-        except Exception as e:
-            print(f"  SKIPPED: {e}")
-            # Skip all drafts for this target since we have no baseline
-            run_idx += len(drafts)
-            print(f"  Skipping {len(drafts)} draft runs for {target_label}\n")
-            continue
-        entry = {"target": target_label, "draft": None, **result}
-        results.append(entry)
-        _save_results(results, config, results_path)
-        _print_summary(entry)
-        print()
-
-        time.sleep(3)
+        if (target_label, None) in completed:
+            print(f"[{run_idx}/{total_runs}] {target_label} (baseline) -- already done, skipping")
+        else:
+            print(f"[{run_idx}/{total_runs}] {target_label} (baseline)")
+            try:
+                result = run_single(target_path, None, f"{target_label} baseline", settings)
+            except Exception as e:
+                print(f"  SKIPPED: {e}")
+                # Skip all drafts for this target since we have no baseline
+                run_idx += len(drafts)
+                print(f"  Skipping {len(drafts)} draft runs for {target_label}\n")
+                continue
+            entry = {"target": target_label, "draft": None, **result}
+            results.append(entry)
+            completed.add((target_label, None))
+            _save_results(results, config, results_path)
+            _print_summary(entry)
+            print()
+            time.sleep(3)
 
         # --- with each draft ---
         for draft in drafts:
@@ -149,6 +173,10 @@ def run_sweep(config: dict, results_path: str) -> list[dict]:
             draft_label = draft["label"]
             draft_path = draft["path"]
             combo_label = f"{target_label} + {draft_label}"
+
+            if (target_label, draft_label) in completed:
+                print(f"[{run_idx}/{total_runs}] {combo_label} -- already done, skipping")
+                continue
 
             print(f"[{run_idx}/{total_runs}] {combo_label}")
             try:
@@ -158,6 +186,7 @@ def run_sweep(config: dict, results_path: str) -> list[dict]:
                 continue
             entry = {"target": target_label, "draft": draft_label, **result}
             results.append(entry)
+            completed.add((target_label, draft_label))
             _save_results(results, config, results_path)
             _print_summary(entry)
             print()
