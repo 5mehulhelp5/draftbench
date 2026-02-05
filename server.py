@@ -171,16 +171,12 @@ class LlamaCppBackend(ServerBackend):
         return cmd
 
     def start(self) -> None:
-        if not os.path.isfile(self.llama_bin):
-            print(f"  Error: llama-server binary not found at {self.llama_bin}", file=sys.stderr)
-            print(f"  Build llama.cpp or pass --llama-bin /path/to/llama-server", file=sys.stderr)
-            sys.exit(1)
+        if not self.llama_bin or not os.path.isfile(self.llama_bin):
+            raise FileNotFoundError(f"llama-server binary not found at {self.llama_bin}")
         if not os.path.isfile(self.model_path):
-            print(f"  Error: model file not found at {self.model_path}", file=sys.stderr)
-            sys.exit(1)
+            raise FileNotFoundError(f"Model file not found at {self.model_path}")
         if self.draft_path and not os.path.isfile(self.draft_path):
-            print(f"  Error: draft model file not found at {self.draft_path}", file=sys.stderr)
-            sys.exit(1)
+            raise FileNotFoundError(f"Draft model file not found at {self.draft_path}")
 
         cmd = self._build_cmd()
         label = "llama.cpp"

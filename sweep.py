@@ -127,7 +127,14 @@ def run_sweep(config: dict, results_path: str) -> list[dict]:
         # --- baseline (no draft) ---
         run_idx += 1
         print(f"[{run_idx}/{total_runs}] {target_label} (baseline)")
-        result = run_single(target_path, None, f"{target_label} baseline", settings)
+        try:
+            result = run_single(target_path, None, f"{target_label} baseline", settings)
+        except Exception as e:
+            print(f"  SKIPPED: {e}")
+            # Skip all drafts for this target since we have no baseline
+            run_idx += len(drafts)
+            print(f"  Skipping {len(drafts)} draft runs for {target_label}\n")
+            continue
         entry = {"target": target_label, "draft": None, **result}
         results.append(entry)
         _save_results(results, config, results_path)
@@ -144,7 +151,11 @@ def run_sweep(config: dict, results_path: str) -> list[dict]:
             combo_label = f"{target_label} + {draft_label}"
 
             print(f"[{run_idx}/{total_runs}] {combo_label}")
-            result = run_single(target_path, draft_path, combo_label, settings)
+            try:
+                result = run_single(target_path, draft_path, combo_label, settings)
+            except Exception as e:
+                print(f"  SKIPPED: {e}\n")
+                continue
             entry = {"target": target_label, "draft": draft_label, **result}
             results.append(entry)
             _save_results(results, config, results_path)
