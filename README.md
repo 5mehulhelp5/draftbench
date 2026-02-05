@@ -135,13 +135,16 @@ Create `configs/my_sweep.json`:
 ### 2. Run the Sweep
 
 ```bash
-# Auto-generates filenames from config metadata
-python sweep.py --config configs/sweep_72b.json
+# Run a single config
+python sweep.py --config configs/my_sweep.json
 # Creates: results/<hardware>_<backend>_<name>.json
 #          results/<hardware>_<backend>_<name>.html
 
-# Or specify custom paths
-python sweep.py --config configs/sweep_72b.json --results results/custom.json --chart results/custom.html
+# Run ALL configs in a directory (excludes example_*.json templates)
+python sweep.py --config-dir configs/
+
+# Or specify custom output paths
+python sweep.py --config configs/my_sweep.json --results results/custom.json --chart results/custom.html
 ```
 
 This will:

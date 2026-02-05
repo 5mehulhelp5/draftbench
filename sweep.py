@@ -8,12 +8,14 @@ interactive Plotly charts.
 Usage:
     python sweep.py --config sweep_config.json
     python sweep.py --config sweep_config.json --results results.json --chart chart.html
+    python sweep.py --config-dir configs/              # Run all configs in directory
     python sweep.py --results results.json --chart-only
 """
 
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import os
 import re
@@ -528,11 +530,36 @@ def _generate_output_paths(config: dict) -> tuple[str, str]:
     return f"{base}.json", f"{base}.html"
 
 
+def _run_config_file(config_path: str, results_path: str | None = None, chart_path: str | None = None):
+    """Run a single config file and generate charts."""
+    print(f"\n{'#'*60}")
+    print(f"  Loading config: {config_path}")
+    print(f"{'#'*60}")
+
+    with open(config_path) as f:
+        config = json.load(f)
+
+    # Auto-generate paths from config metadata if not specified
+    auto_results, auto_chart = _generate_output_paths(config)
+    results_path = results_path or auto_results
+    chart_path = chart_path or auto_chart
+
+    results = run_sweep(config, results_path)
+
+    print(f"\n{'='*60}")
+    print(f"  Sweep complete. Results saved to {results_path}")
+    print(f"{'='*60}\n")
+
+    generate_chart(results, chart_path, config)
+    return results_path, chart_path
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Run speculative decoding benchmark sweep and generate charts.",
     )
     parser.add_argument("--config", help="Path to sweep config JSON file")
+    parser.add_argument("--config-dir", help="Path to directory containing config files (runs all *.json except example_*.json)")
     parser.add_argument("--results", help="Path to results JSON file (auto-generated from config if not specified)")
     parser.add_argument("--chart", help="Path to output HTML chart (auto-generated from config if not specified)")
     parser.add_argument("--chart-only", action="store_true", help="Skip benchmarking, just generate chart from existing results")
@@ -551,24 +578,50 @@ def main():
         generate_chart(data["results"], chart_path, data)
         return
 
+    # Handle --config-dir: run all configs in directory
+    if args.config_dir:
+        if not os.path.isdir(args.config_dir):
+            print(f"Error: directory not found: {args.config_dir}", file=sys.stderr)
+            sys.exit(1)
+
+        # Find all JSON files, excluding example_*.json templates
+        config_files = sorted(glob.glob(os.path.join(args.config_dir, "*.json")))
+        config_files = [f for f in config_files if not os.path.basename(f).startswith("example_")]
+
+        if not config_files:
+            print(f"Error: no config files found in {args.config_dir}", file=sys.stderr)
+            print(f"  (files matching example_*.json are excluded)", file=sys.stderr)
+            sys.exit(1)
+
+        print(f"\n{'#'*60}")
+        print(f"  Running {len(config_files)} config(s) from {args.config_dir}")
+        print(f"{'#'*60}")
+        for i, cf in enumerate(config_files, 1):
+            print(f"  [{i}] {os.path.basename(cf)}")
+
+        completed = []
+        for config_file in config_files:
+            try:
+                results_path, chart_path = _run_config_file(config_file)
+                completed.append((config_file, results_path, chart_path))
+            except Exception as e:
+                print(f"\n  ERROR running {config_file}: {e}", file=sys.stderr)
+                continue
+
+        print(f"\n{'#'*60}")
+        print(f"  All sweeps complete! {len(completed)}/{len(config_files)} succeeded")
+        print(f"{'#'*60}")
+        for cf, rp, cp in completed:
+            print(f"  {os.path.basename(cf)}:")
+            print(f"    Results: {rp}")
+            print(f"    Chart:   {cp}")
+        return
+
+    # Handle single --config
     if not args.config:
-        parser.error("--config is required (unless using --chart-only)")
+        parser.error("--config or --config-dir is required (unless using --chart-only)")
 
-    with open(args.config) as f:
-        config = json.load(f)
-
-    # Auto-generate paths from config metadata if not specified
-    auto_results, auto_chart = _generate_output_paths(config)
-    results_path = args.results or auto_results
-    chart_path = args.chart or auto_chart
-
-    results = run_sweep(config, results_path)
-
-    print(f"\n{'='*60}")
-    print(f"  Sweep complete. Results saved to {results_path}")
-    print(f"{'='*60}\n")
-
-    generate_chart(results, chart_path, config)
+    _run_config_file(args.config, args.results, args.chart)
 
 
 if __name__ == "__main__":
