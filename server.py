@@ -94,14 +94,30 @@ class ServerBackend(abc.ABC):
 
     def wait_ready(self, timeout: float = 60) -> bool:
         """Poll the server until it responds or timeout is reached."""
-        url = f"http://{self.host}:{self.port}/v1/models"
+        health_url = f"http://{self.host}:{self.port}/health"
+        models_url = f"http://{self.host}:{self.port}/v1/models"
+        use_health = True
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             try:
-                r = requests.get(url, timeout=2)
-                if r.status_code == 200:
-                    return True
+                if use_health:
+                    # Prefer /health (llama.cpp returns 200 only when model is loaded)
+                    r = requests.get(health_url, timeout=2)
+                    if r.status_code == 200:
+                        return True
+                    if r.status_code == 503:
+                        # Model still loading, keep polling /health
+                        pass
+                    else:
+                        # /health not supported (404 etc.), fall back to /v1/models
+                        use_health = False
+                else:
+                    r = requests.get(models_url, timeout=2)
+                    if r.status_code == 200:
+                        return True
             except requests.ConnectionError:
+                pass
+            except requests.RequestException:
                 pass
             # check if the process died
             if self._process and self._process.poll() is not None:

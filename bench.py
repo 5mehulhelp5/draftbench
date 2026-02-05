@@ -106,8 +106,18 @@ def stream_chat_completion(
 
     t_start = time.perf_counter()
 
-    with requests.post(url, headers=headers, json=payload, stream=True, timeout=120) as resp:
+    # Retry on 503 (server still loading model)
+    max_retries = 5
+    for attempt in range(max_retries):
+        resp = requests.post(url, headers=headers, json=payload, stream=True, timeout=120)
+        if resp.status_code == 503 and attempt < max_retries - 1:
+            resp.close()
+            time.sleep(3)
+            continue
         resp.raise_for_status()
+        break
+
+    with resp:
         for raw_line in resp.iter_lines(decode_unicode=True):
             if not raw_line:
                 continue
