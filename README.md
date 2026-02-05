@@ -116,6 +116,7 @@ Create `configs/my_sweep.json`:
     {"label": "3B Q4_K_M", "path": "/path/to/qwen2.5-3b-instruct-q4_k_m.gguf"}
   ],
   "settings": {
+    "llama_bin": "/path/to/llama-server",
     "runs": 1,
     "max_tokens": 1024,
     "temperature": 0.0,
@@ -131,6 +132,9 @@ Create `configs/my_sweep.json`:
 - `hardware`: Hardware identifier (e.g., `rtx4090-24gb`, `a100-80gb`)
 - `backend`: Inference backend (`llamacpp`, `vllm`, `lmstudio`)
 - `model_family`: Model family name for chart titles
+
+**Settings:**
+- `llama_bin`: Path to `llama-server` binary (auto-detected from PATH if omitted)
 
 ### 2. Run the Sweep
 

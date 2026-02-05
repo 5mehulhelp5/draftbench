@@ -14,6 +14,7 @@
     {"label": "3B Q4_K_M",   "path": "/path/to/models/qwen2.5-3b-instruct-q4_k_m.gguf"}
   ],
   "settings": {
+    "llama_bin": "/path/to/llama-server",
     "runs": 1,
     "max_tokens": 1024,
     "temperature": 0.0,

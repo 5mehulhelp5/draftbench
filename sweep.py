@@ -63,6 +63,7 @@ def run_single(
         port=port,
         gpu_layers=settings.get("gpu_layers", 99),
         ctx_size=settings.get("ctx_size", 4096),
+        llama_bin=settings.get("llama_bin"),
         log_file=log_file,
     )
 
