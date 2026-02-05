@@ -512,8 +512,8 @@ def main():
         description="Run speculative decoding benchmark sweep and generate charts.",
     )
     parser.add_argument("--config", help="Path to sweep config JSON file")
-    parser.add_argument("--results", default="results.json", help="Path to results JSON file (default: results.json)")
-    parser.add_argument("--chart", default="chart.html", help="Path to output HTML chart (default: chart.html)")
+    parser.add_argument("--results", default="results/results.json", help="Path to results JSON file")
+    parser.add_argument("--chart", default="results/chart.html", help="Path to output HTML chart")
     parser.add_argument("--chart-only", action="store_true", help="Skip benchmarking, just generate chart from existing results")
 
     args = parser.parse_args()
