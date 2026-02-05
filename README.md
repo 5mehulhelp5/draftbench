@@ -1,12 +1,24 @@
 # draftbench
 
-Benchmark tool for measuring the performance impact of speculative decoding with llama.cpp on Apple Silicon.
+Find the optimal draft model for speculative decoding on your hardware.
+
+## What Does This Tool Do?
+
+**The problem:** Speculative decoding can speed up LLM inference by 50-80%, but only if you pick the right draft model. Too small and accuracy suffers. Too large and the overhead kills your gains. The optimal choice depends on your target model, quantization, and hardware.
+
+**The solution:** draftbench automatically tests every combination of target + draft models you give it, measures the throughput, and shows you which pairing works best. Instead of guessing, you get data.
+
+**How it works:**
+1. You provide a list of target models (the big ones you want to run fast)
+2. You provide a list of draft models (smaller models from the same family)
+3. draftbench tests each combination: baseline speed, then speed with each draft
+4. Results are saved to JSON and visualized as interactive charts
 
 ## What is Speculative Decoding?
 
 Speculative decoding uses a small "draft" model to propose tokens that a larger "target" model then verifies. When the draft model predicts correctly, multiple tokens are accepted in a single forward pass, significantly speeding up generation.
 
-**Key findings from our benchmarks:**
+**Key findings from our benchmarks (M2 Ultra, 128GB):**
 - Slow targets (72B Q8_0 @ 6 tok/s): **+80% speedup** with the right draft model
 - Fast targets (72B Q4_K_M @ 9.5 tok/s): **+12% speedup** - diminishing returns
 - Sweet spot: **3B Q4_K_M** draft works well across different target sizes
