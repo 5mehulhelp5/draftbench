@@ -30,3 +30,6 @@ Thumbs.db
 # Models (too large for git)
 *.gguf
 models/
+
+# Personal sweep configs (use example_sweep.json as template)
+configs/sweep_*.json

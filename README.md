@@ -18,7 +18,7 @@ Find the optimal draft model for speculative decoding on your hardware.
 
 Speculative decoding uses a small "draft" model to propose tokens that a larger "target" model then verifies. When the draft model predicts correctly, multiple tokens are accepted in a single forward pass, significantly speeding up generation.
 
-**Key findings from our benchmarks (M2 Ultra, 128GB):**
+**Key findings from our benchmarks:**
 - Slow targets (72B Q8_0 @ 6 tok/s): **+80% speedup** with the right draft model
 - Fast targets (72B Q4_K_M @ 9.5 tok/s): **+12% speedup** - diminishing returns
 - Sweet spot: **3B Q4_K_M** draft works well across different target sizes
@@ -28,11 +28,10 @@ Speculative decoding uses a small "draft" model to propose tokens that a larger 
 ### 1. Build llama.cpp
 
 ```bash
-cd ~/Code/ml
 git clone https://github.com/ggerganov/llama.cpp.git
 cd llama.cpp
 mkdir build && cd build
-cmake .. -DLLAMA_METAL=ON
+cmake ..                    # Add -DLLAMA_CUDA=ON for NVIDIA or -DLLAMA_METAL=ON for Apple Silicon
 cmake --build . --config Release -j
 ```
 
@@ -69,7 +68,7 @@ Test a single target + draft combination:
 
 ```bash
 # Start server with speculative decoding
-~/Code/ml/llama.cpp/build/bin/llama-server \
+llama-server \
   -m /path/to/target-model.gguf \
   --model-draft /path/to/draft-model.gguf \
   -ngl 99 -c 4096 --port 8080
@@ -103,7 +102,7 @@ Create `configs/my_sweep.json`:
 ```json
 {
   "name": "qwen25-72b",
-  "hardware": "m2ultra-128gb",
+  "hardware": "rtx4090-24gb",
   "backend": "llamacpp",
   "model_family": "Qwen2.5",
 
@@ -129,7 +128,7 @@ Create `configs/my_sweep.json`:
 
 **Metadata fields:**
 - `name`: Short identifier for this sweep (used in filenames)
-- `hardware`: Hardware identifier (e.g., `m2ultra-128gb`, `rtx4090-24gb`)
+- `hardware`: Hardware identifier (e.g., `rtx4090-24gb`, `a100-80gb`)
 - `backend`: Inference backend (`llamacpp`, `vllm`, `lmstudio`)
 - `model_family`: Model family name for chart titles
 
@@ -138,8 +137,8 @@ Create `configs/my_sweep.json`:
 ```bash
 # Auto-generates filenames from config metadata
 python sweep.py --config configs/sweep_72b.json
-# Creates: results/m2ultra-128gb_llamacpp_qwen25-72b.json
-#          results/m2ultra-128gb_llamacpp_qwen25-72b.html
+# Creates: results/<hardware>_<backend>_<name>.json
+#          results/<hardware>_<backend>_<name>.html
 
 # Or specify custom paths
 python sweep.py --config configs/sweep_72b.json --results results/custom.json --chart results/custom.html
@@ -242,7 +241,7 @@ Results are saved as JSON with full metadata:
 {
   "timestamp": "2026-02-05T01:18:17.066992+00:00",
   "name": "qwen25-72b",
-  "hardware": "m2ultra-128gb",
+  "hardware": "rtx4090-24gb",
   "backend": "llamacpp",
   "model_family": "Qwen2.5",
   "settings": { ... },
@@ -277,10 +276,7 @@ draftbench/
 ├── server.py         # Server launcher (llama.cpp, LM Studio, vLLM)
 ├── sweep.py          # Automated sweep + chart generation
 ├── configs/          # Sweep configuration files
-│   ├── sweep_72b.json
-│   ├── sweep_32b.json
-│   ├── sweep_14b.json
-│   └── sweep_7b.json
+│   └── example_sweep.json  # Template - copy and customize
 ├── results_*.json    # Benchmark results
 ├── chart_*.html      # Generated visualizations
 └── README.md

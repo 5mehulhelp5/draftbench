@@ -1,6 +1,6 @@
 {
   "name": "qwen25-72b",
-  "hardware": "m2ultra-128gb",
+  "hardware": "your-hardware",
   "backend": "llamacpp",
   "model_family": "Qwen2.5",
 
